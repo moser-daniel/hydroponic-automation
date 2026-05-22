@@ -10,6 +10,12 @@ The blueprint automates irrigation with a day/night strategy:
 - Day: repeated watering based on weather-derived sun intensity.
 - Safety gap: enforces a minimum time between waterings.
 
+All timing values are derived from a normal watering profile:
+
+- Normal watering duration (seconds)
+- Normal interval (minutes)
+- Multipliers for low/high sun, night duration, and safety gap
+
 ## How Sun Intensity Is Estimated
 
 The blueprint uses a Weather entity state to determine intensity levels:
@@ -63,23 +69,23 @@ When creating the automation from the blueprint, set:
 
 - Weather entity
 - Night watering time
-- Day watering duration (seconds)
-- Night watering duration (seconds)
-- Interval at low sun (minutes)
-- Interval at medium sun (minutes)
-- Interval at high sun (minutes)
-- Safety gap between waterings (minutes)
+- Normal watering duration (seconds)
+- Normal interval (minutes)
+- Low sun interval multiplier
+- High sun interval multiplier
+- Night duration multiplier
+- Safety gap multiplier
 - Start watering action (pump on / irrigation on)
 - Stop watering action (pump off / irrigation off)
 
 ## Suggested Starting Values
 
-- Day duration: 45 seconds
-- Night duration: 30 seconds
-- Low sun interval: 180 minutes
-- Medium sun interval: 90 minutes
-- High sun interval: 45 minutes
-- Safety gap: 20 minutes
+- Normal duration: 300 seconds (5 minutes)
+- Normal interval: 120 minutes
+- Low sun multiplier: 1.5 (result: 180 minutes)
+- High sun multiplier: 0.4 (result: 48 minutes)
+- Night duration multiplier: 0.5 (result: 150 seconds)
+- Safety gap multiplier: 0.17 (result: ~20 minutes)
 - Night watering time: 02:30
 
 Adjust these values based on plant type, reservoir volume, climate, and tower size.

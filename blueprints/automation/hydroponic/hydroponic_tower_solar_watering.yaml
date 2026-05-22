@@ -5,6 +5,10 @@ blueprint:
     - Exactly 1 watering at night at a fixed time
     - Multiple waterings during daytime based on weather-derived sun intensity
 
+    All timing values are derived from a normal watering profile:
+    - normal watering duration (seconds)
+    - normal watering interval (minutes)
+
     Weather condition controls the sun intensity class and therefore the interval:
     - low: long interval
     - medium: medium interval
@@ -30,9 +34,10 @@ blueprint:
       selector:
         time: {}
 
-    watering_duration_day_seconds:
-      name: Daytime watering duration (seconds)
-      default: 45
+    normal_watering_duration_seconds:
+      name: Normal watering duration (seconds)
+      description: Base runtime for watering. Other runtimes are derived from this.
+      default: 300
       selector:
         number:
           min: 5
@@ -40,55 +45,59 @@ blueprint:
           unit_of_measurement: s
           mode: box
 
-    watering_duration_night_seconds:
-      name: Night watering duration (seconds)
-      default: 30
+    normal_interval_minutes:
+      name: Normal interval (minutes)
+      description: Base interval used for medium sun intensity.
+      default: 120
       selector:
         number:
           min: 5
-          max: 600
-          unit_of_measurement: s
-          mode: box
-
-    interval_low_sun_minutes:
-      name: Interval at low sun (minutes)
-      default: 180
-      selector:
-        number:
-          min: 30
           max: 720
           unit_of_measurement: min
           mode: box
 
-    interval_medium_sun_minutes:
-      name: Interval at medium sun (minutes)
-      default: 90
-      selector:
-        number:
-          min: 15
-          max: 360
-          unit_of_measurement: min
-          mode: box
-
-    interval_high_sun_minutes:
-      name: Interval at high sun (minutes)
-      default: 45
-      selector:
-        number:
-          min: 5
-          max: 180
-          unit_of_measurement: min
-          mode: box
-
-    minimum_gap_minutes:
-      name: Safety gap between waterings (minutes)
-      description: Minimum spacing, even if weather conditions change quickly.
-      default: 20
+    low_sun_interval_multiplier:
+      name: Low sun interval multiplier
+      description: Multiplies the normal interval when sun intensity is low.
+      default: 1.5
       selector:
         number:
           min: 1
-          max: 180
-          unit_of_measurement: min
+          max: 4
+          step: 0.1
+          mode: slider
+
+    high_sun_interval_multiplier:
+      name: High sun interval multiplier
+      description: Multiplies the normal interval when sun intensity is high.
+      default: 0.4
+      selector:
+        number:
+          min: 0.2
+          max: 1
+          step: 0.05
+          mode: slider
+
+    night_duration_multiplier:
+      name: Night duration multiplier
+      description: Multiplies the normal duration for the nightly watering.
+      default: 0.5
+      selector:
+        number:
+          min: 0.1
+          max: 1
+          step: 0.1
+          mode: slider
+
+    safety_gap_multiplier:
+      name: Safety gap multiplier
+      description: Multiplies the normal interval to calculate minimum spacing.
+      default: 0.17
+      selector:
+        number:
+          min: 0.05
+          max: 1
+          step: 0.01
           mode: box
 
     irrigation_start_action:
@@ -116,16 +125,23 @@ trigger:
 
 variables:
   weather_entity: !input weather_entity
-  interval_low: !input interval_low_sun_minutes
-  interval_medium: !input interval_medium_sun_minutes
-  interval_high: !input interval_high_sun_minutes
-  min_gap: !input minimum_gap_minutes
-  day_duration: !input watering_duration_day_seconds
-  night_duration: !input watering_duration_night_seconds
+  normal_duration: !input normal_watering_duration_seconds
+  normal_interval: !input normal_interval_minutes
+  low_multiplier: !input low_sun_interval_multiplier
+  high_multiplier: !input high_sun_interval_multiplier
+  night_multiplier: !input night_duration_multiplier
+  gap_multiplier: !input safety_gap_multiplier
 
   weather_state: "{{ states(weather_entity) | lower }}"
   high_sun_states: ["sunny", "clear", "clear-night"]
   low_sun_states: ["cloudy", "fog", "hail", "lightning", "lightning-rainy", "pouring", "rainy", "snowy", "snowy-rainy", "windy", "windy-variant", "exceptional"]
+
+  day_duration: "{{ [normal_duration | float(0), 1] | max | round(0) }}"
+  night_duration: "{{ [((normal_duration | float(0)) * (night_multiplier | float(0))), 1] | max | round(0) }}"
+  interval_medium: "{{ [normal_interval | float(0), 1] | max | round(0) }}"
+  interval_low: "{{ [((normal_interval | float(0)) * (low_multiplier | float(0))), 1] | max | round(0) }}"
+  interval_high: "{{ [((normal_interval | float(0)) * (high_multiplier | float(0))), 1] | max | round(0) }}"
+  min_gap: "{{ [((normal_interval | float(0)) * (gap_multiplier | float(0))), 1] | max | round(0) }}"
 
   required_day_interval: >-
     {% if weather_state in high_sun_states %}
@@ -152,7 +168,7 @@ action:
         sequence:
           - sequence: !input irrigation_start_action
           - delay:
-              seconds: !input watering_duration_night_seconds
+              seconds: "{{ night_duration | int(1) }}"
           - sequence: !input irrigation_stop_action
 
       - conditions:
@@ -168,5 +184,5 @@ action:
         sequence:
           - sequence: !input irrigation_start_action
           - delay:
-              seconds: !input watering_duration_day_seconds
+              seconds: "{{ day_duration | int(1) }}"
           - sequence: !input irrigation_stop_action
