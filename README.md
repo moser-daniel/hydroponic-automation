@@ -91,4 +91,4 @@ Adjust these values based on plant type, reservoir volume, climate, and tower si
 
 ## License
 
-Add your preferred license information here.
+This project is licensed under the MIT License. See the LICENSE file for details.
