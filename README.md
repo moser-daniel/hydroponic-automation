@@ -68,6 +68,7 @@ Use one of these methods:
 When creating the automation from the blueprint, set:
 
 - Weather entity
+- Last watering helper (input_datetime)
 - Night watering time
 - Normal watering duration (seconds)
 - Normal interval (minutes)
@@ -77,6 +78,11 @@ When creating the automation from the blueprint, set:
 - Safety gap multiplier
 - Start watering action (pump on / irrigation on)
 - Stop watering action (pump off / irrigation off)
+
+Create the helper first in Home Assistant:
+
+- Settings -> Devices & Services -> Helpers -> Create Helper -> Date and/or Time
+- Choose Date and time, then select this helper in the blueprint input.
 
 ## Suggested Starting Values
 

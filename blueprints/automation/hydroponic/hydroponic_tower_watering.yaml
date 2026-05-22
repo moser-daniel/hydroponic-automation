@@ -27,6 +27,13 @@ blueprint:
         entity:
           domain: weather
 
+    last_watering_helper:
+      name: Last watering helper (input_datetime)
+      description: Input datetime helper used to store the timestamp of the last completed watering.
+      selector:
+        entity:
+          domain: input_datetime
+
     night_watering_time:
       name: Night watering time
       description: Time for the single nightly watering.
@@ -125,6 +132,7 @@ trigger:
 
 variables:
   weather_entity: !input weather_entity
+  last_watering_helper: !input last_watering_helper
   normal_duration: !input normal_watering_duration_seconds
   normal_interval: !input normal_interval_minutes
   low_multiplier: !input low_sun_interval_multiplier
@@ -152,8 +160,13 @@ variables:
       {{ interval_medium }}
     {% endif %}
 
-  last_trigger_ts: "{{ as_timestamp(state_attr(this.entity_id, 'last_triggered')) | float(0) }}"
-  elapsed_minutes: "{{ ((as_timestamp(now()) - last_trigger_ts) / 60) | float(99999) }}"
+  last_watering_ts: "{{ as_timestamp(states(last_watering_helper)) | float(0) }}"
+  elapsed_minutes: >-
+    {% if last_watering_ts > 0 %}
+      {{ ((as_timestamp(now()) - last_watering_ts) / 60) | float(99999) }}
+    {% else %}
+      99999
+    {% endif %}
 
 condition: []
 
@@ -170,6 +183,11 @@ action:
           - delay:
               seconds: "{{ night_duration | int(1) }}"
           - sequence: !input irrigation_stop_action
+          - service: input_datetime.set_datetime
+            target:
+              entity_id: !input last_watering_helper
+            data:
+              datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
 
       - conditions:
           - condition: trigger
@@ -186,3 +204,8 @@ action:
           - delay:
               seconds: "{{ day_duration | int(1) }}"
           - sequence: !input irrigation_stop_action
+          - service: input_datetime.set_datetime
+            target:
+              entity_id: !input last_watering_helper
+            data:
+              datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
